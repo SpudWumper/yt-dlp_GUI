@@ -48,3 +48,4 @@ class ytdlpGUI:
 if __name__ == "__main__":
     gui = ytdlpGUI(800, 600)
     gui.enterMain()
+    
