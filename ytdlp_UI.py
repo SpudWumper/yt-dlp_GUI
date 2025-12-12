@@ -63,7 +63,7 @@ class ytdlpGUI:
 
         
     # takes input URL and loads corresponding video and information
-    # - extracts info of video
+    # - extracts the info of video
     # - grabs thumbnail URL and converts to tkinter displayable image
     # - display title above thumbnail
     # - grab and display downloadable formats
