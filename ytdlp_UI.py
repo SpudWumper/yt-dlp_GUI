@@ -50,6 +50,8 @@ class ytdlpGUI:
         self.progFrame = tk.Frame(master=mid)
         self.progFrame.pack(side=tk.RIGHT)
         self.progressLogs = tk.Text(master=self.progFrame, wrap='word', width=49)
+        self.progressLogs.insert('1.0', "Enter a video URl and load video\n")
+        self.progressLogs.config(state='disabled')
         #self.progressLogs.pack(side=tk.RIGHT)
 
         self.formatOptFrame = tk.Frame(master=mid)#, width=w//2, height=h)
@@ -57,6 +59,54 @@ class ytdlpGUI:
 
         sys.stdout = TextRedirector(self.progressLogs)
         sys.stderr = TextRedirector(self.progressLogs)
+
+        self.titleLabel = tk.Label(master=self.vidInfoFrame, text="(title)", wraplength=396)
+        self.titleLabel.config(font=("TkDefaultFont", 16))
+        self.titleLabel.pack()
+
+        self.imgLabel = tk.Label(master=self.vidInfoFrame, text="(thumbnail)")
+        self.imgLabel.pack()
+
+        self.filenameLabel = tk.Label(master=self.formatOptFrame, text="Enter filename here")
+        self.filenameLabel.pack()
+        self.filenameIn = tk.Entry(master=self.formatOptFrame, width=49, state='disabled')
+        self.filenameIn.pack(pady=5)
+        self.fileLocation = tk.Label(master=self.formatOptFrame, text="Download location: ", wraplength=396)
+        self.fileLocation.pack()
+        self.browse = tk.Button(
+            master=self.formatOptFrame,
+            text="Choose download location",
+            width=25,
+            height=2,
+            relief="raised",
+            state='disabled',
+            command=self.browseDir
+        )
+        self.browse.pack(pady=10)
+
+        self.audioCB = ttk.Combobox(master=self.formatOptFrame, values=(), width=49)
+        self.audioCB.set('Choose an audio format')
+        self.audioCB.pack(pady=10)
+        self.videoCB = ttk.Combobox(master=self.formatOptFrame, values=(), width=49)
+        self.videoCB.set('Choose a video format')
+        self.videoCB.pack(pady=10)
+
+        self.timestampFrame = tk.Frame(master=self.formatOptFrame)
+        self.timestampFrame.pack()
+        self.timestampLabel = tk.Label(master=self.timestampFrame, text="Download section of video (DD:HH:MM:SS)")
+        self.startIn = tk.Entry(master=self.timestampFrame, width=10, state='disabled')
+        self.dashLabel = tk.Label(master=self.timestampFrame, text="-")
+        self.endIn = tk.Entry(master=self.timestampFrame, width=10, state='disabled')
+        self.timestampLabel.grid(column=0,row=0, columnspan=3)
+        self.startIn.grid(column=0, row=1)
+        self.dashLabel.grid(column=1, row=1)
+        self.endIn.grid(column=2, row=1)
+
+        self.thumbnailYN = tk.IntVar()
+        self.embedThumbnail = tk.Checkbutton(master=self.formatOptFrame, text="Embed thumbnail", variable=self.thumbnailYN, onvalue=1, offvalue=0, state='disabled')
+        self.embedThumbnail.pack(pady=5)
+
+        self.progressLogs.pack()
 
         # -------------------------------------------------------------
 
@@ -69,17 +119,18 @@ class ytdlpGUI:
             text="Download video",
             width=16,
             height=2,
-            relief="raised"
+            relief="raised",
+            state='disabled',
+            command=self.downloadVideo
         )
-        # self.downVid.pack(pady=10)
+        self.downVid.pack(pady=10)
 
-    # function to handle file browsing, just a wrapper?
-    def browseDir(self, event):
+    # function to handle file browsing
+    def browseDir(self):
         dir = filedialog.askdirectory()
         self.fileLocation.config(text=dir)
 
     # takes input URL and loads corresponding video and information
-    # - first clear the frames if we have already loaded a video
     # - extracts the info of video
     # - grabs thumbnail URL and converts to tkinter displayable image
     # - display title above thumbnail
@@ -107,11 +158,6 @@ class ytdlpGUI:
                 messagebox.showerror("Invalid URL", "Make sure to choose a valid URL")
                 return -1
 
-            for widget in self.vidInfoFrame.winfo_children():
-                widget.destroy()
-            for widget in self.formatOptFrame.winfo_children():
-                widget.destroy()
-
             self.vidTitle = info.get('title')
 
             self.vidDuration = info.get('duration')
@@ -124,28 +170,13 @@ class ytdlpGUI:
             image.thumbnail([396,396])
             self.photo = ImageTk.PhotoImage(image)
 
-            titleLabel = tk.Label(master=self.vidInfoFrame, text=self.vidTitle, wraplength=396)
-            titleLabel.config(font=("TkDefaultFont", 16))
-            titleLabel.pack()
+            self.titleLabel.config(text=self.vidTitle)
 
-            imgLabel = tk.Label(master=self.vidInfoFrame, image=self.photo)
-            imgLabel.pack()
+            self.imgLabel.config(image=self.photo, text="")
 
-            filenameLabel = tk.Label(master=self.formatOptFrame, text="Enter filename here")
-            filenameLabel.pack()
-            self.filenameIn = tk.Entry(master=self.formatOptFrame, width=49)
-            self.filenameIn.pack(pady=5)
-            self.fileLocation = tk.Label(master=self.formatOptFrame, text="Download location: ", wraplength=396)
-            self.fileLocation.pack()
-            self.browse = tk.Button(
-                master=self.formatOptFrame,
-                text="Choose download location",
-                width=25,
-                height=2,
-                relief="raised"
-            )
-            self.browse.pack(pady=10)
-            self.browse.bind("<Button-1>", self.browseDir)
+            self.filenameIn.config(state='normal')
+            self.filenameIn.delete(0, 'end')
+            self.browse.config(state='normal')
 
             formats = info.get('formats')
             audio = ['None']
@@ -158,31 +189,19 @@ class ytdlpGUI:
                 else:
                     video.append(f.get('format') + ', ' + f.get('video_ext') + ', ' + f.get('protocol'))
             
-            self.audioCB = ttk.Combobox(master=self.formatOptFrame, values=audio, width=49)
             self.audioCB.set('Choose an audio format')
-            self.audioCB.pack(pady=10)
-            self.videoCB = ttk.Combobox(master=self.formatOptFrame, values=video, width=49)
+            self.audioCB.config(values=audio)
             self.videoCB.set('Choose a video format')
-            self.videoCB.pack(pady=10)
+            self.videoCB.config(values=video)
 
-            self.timestampFrame = tk.Frame(master=self.formatOptFrame)
-            self.timestampFrame.pack()
-            self.timestampLabel = tk.Label(master=self.timestampFrame, text="Download section of video (DD:HH:MM:SS)")
-            self.startIn = tk.Entry(master=self.timestampFrame, width=10)
-            self.dashLabel = tk.Label(master=self.timestampFrame, text="-")
-            self.endIn = tk.Entry(master=self.timestampFrame, width=10)
-            self.timestampLabel.grid(column=0,row=0, columnspan=3)
-            self.startIn.grid(column=0, row=1)
-            self.dashLabel.grid(column=1, row=1)
-            self.endIn.grid(column=2, row=1)
+            self.startIn.config(state='normal')
+            self.startIn.delete(0, 'end')
+            self.endIn.config(state='normal')
+            self.endIn.delete(0, 'end')
 
-            self.thumbnailYN = tk.IntVar()
-            self.embedThumbnail = tk.Checkbutton(master=self.formatOptFrame, text="Embed thumbnail", variable=self.thumbnailYN, onvalue=1, offvalue=0)
-            self.embedThumbnail.pack(pady=5)
+            self.embedThumbnail.config(state='normal')
 
-            self.progressLogs.pack()
-
-            self.downVid.pack(pady=10)
+            self.downVid.config(state='normal')
 
     def hook(self, d):
         if d['status'] == 'downloading':
@@ -195,9 +214,6 @@ class ytdlpGUI:
                 self.cancelBool = False
                 raise DownloadCancelled("Download cancelled")
 
-            #self.progressbar.step(prog)
-            #self.window.update()
-
         if d['status'] == 'finished':
             self.finishCounter += 1
     
@@ -208,7 +224,7 @@ class ytdlpGUI:
     # downloads the video with selected options
     # - display messages to indicate progress
     # - give user option to cancel download
-    def downloadVideo(self, event):
+    def downloadVideo(self):
         audioFormat = self.audioCB.get()
         videoFormat = self.videoCB.get()
         startTime = self.startIn.get()
@@ -346,9 +362,6 @@ class ytdlpGUI:
             else:
                 fileName = self.filenameIn.get()
 
-            #self.progressbar = ttk.Progressbar(master=self.bottom, orient=tk.HORIZONTAL, length=200)
-            #self.progressbar.pack()
-
             self.finishCounter = 0
 
             self.cancel = tk.Button(
@@ -372,6 +385,7 @@ class ytdlpGUI:
                         'download_ranges': download_range_func(None, [(secondsStart, secondsEnd)]),
                         'force_keyframes_at_cuts': True,
                         'writethumbnail': True,
+                        'logger': Logger(self.progressLogs),
                         'postprocessors': [
                             {'key': 'FFmpegMetadata', 'add_metadata': True,},
                             {'key': 'EmbedThumbnail'}
@@ -388,6 +402,7 @@ class ytdlpGUI:
                         'format': finFormat,
                         'progress_hooks': [self.hook],
                         'writethumbnail': True,
+                        'logger': Logger(self.progressLogs),
                         'postprocessors': [
                             {'key': 'FFmpegMetadata', 'add_metadata': True,},
                             {'key': 'EmbedThumbnail'}
@@ -405,6 +420,7 @@ class ytdlpGUI:
                         'progress_hooks': [self.hook],
                         'download_ranges': download_range_func(None, [(secondsStart, secondsEnd)]),
                         'force_keyframes_at_cuts': True,
+                        'logger': Logger(self.progressLogs)
                     }
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         error_code = ydl.download(self.linkIn.get())
@@ -416,6 +432,7 @@ class ytdlpGUI:
                         'outtmpl': fileLoc + "\\" + fileName + ".%(ext)s",
                         'format': finFormat,
                         'progress_hooks': [self.hook],
+                        'logger': Logger(self.progressLogs)
                     }
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         error_code = ydl.download(self.linkIn.get())
@@ -440,9 +457,40 @@ class ytdlpGUI:
     # start up the gui
     def enterMain(self):
         self.findVid.bind("<Button-1>", self.loadVid)
-        self.downVid.bind("<Button-1>", self.downloadVideo)
 
         self.window.mainloop()
+
+# class to control where and how ytdlp logs various messages
+class Logger:
+    def __init__(self, widget):
+        self.widget = widget
+
+    def debug(self, msg):
+        if msg.startswith('[debug] '):
+            pass
+        else:
+            self.info(msg)
+
+    def info(self, msg):
+        self.widget.configure(state='normal')
+        self.widget.insert('end', msg+"\n")
+        self.widget.configure(state='disabled')
+        self.widget.update()
+        self.widget.see('end')
+
+    def warning(self, msg):
+        self.widget.configure(state='normal')
+        self.widget.insert('end', msg+"\n")
+        self.widget.configure(state='disabled')
+        self.widget.update()
+        self.widget.see('end')
+
+    def error(self, msg):
+        self.widget.configure(state='normal')
+        self.widget.insert('end', msg+"\n")
+        self.widget.configure(state='disabled')
+        self.widget.update()
+        self.widget.see('end')
 
 # text redirector to redirect output from command line to tkinter window
 # if curious - https://stackoverflow.com/questions/12351786/how-to-redirect-print-statements-to-tkinter-text-widget?rq=1
@@ -452,9 +500,9 @@ class TextRedirector:
     
     def write(self, string):
         self.widget.configure(state='normal')
-        self.widget.insert('end', string)
+        self.widget.insert('end', string+"\n")
         self.widget.configure(state='disabled')
-        self.widget.update() # THIS ALMOST FIXED IT
+        self.widget.update()
         self.widget.see('end')
     
     def flush(self):
